@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Gertly – ToS Analyzer",
+  "version": "1.0.0",
+  "description": "Highlights risky Terms-of-Service clauses directly on web pages.",
+  "action": { "default_popup": "popup/popup.html",
+    "default_icon": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" } },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["contextMenus", "storage", "scripting", "activeTab", "tabs"],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*",
+    "https://app.gertly.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "content_scripts": [{
+    "matches": ["https://*/*", "http://*/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle",
+    "all_frames": true
+  }],
+  "icons": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" }
+}
