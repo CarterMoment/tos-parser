@@ -69,7 +69,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   await sendToTab(tab.id, { type: "TERMSHIFT_START", selectionText: info.selectionText });
 
   const { apiUrl } = await chrome.storage.sync.get({
-    apiUrl: "https://termshift.com"
+    apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws'
   });
   const token = await getAuthToken();
 
@@ -82,6 +82,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       },
       body: info.selectionText.slice(0, 200000)
     });
+    if (!res.ok) throw new Error(`API error ${res.status}`);
     const data = await res.json();
     await sendToTab(tab.id, { type: "TERMSHIFT_RESULT", payload: data });
   } catch (e) {
@@ -174,7 +175,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
         // 5) Call your API
         const { apiUrl } = await chrome.storage.sync.get({
-          apiUrl: "https://termshift.com"
+          apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws'
         });
         const token = await getAuthToken();
 
@@ -186,6 +187,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           },
           body: (pageText || "").slice(0, 200000)
         });
+        if (!res.ok) throw new Error(`API error ${res.status}`);
         const payload = await res.json();
 
         // 6) Cleanup + return
@@ -196,8 +198,8 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         chrome.tabs.sendMessage(sourceTabId, { type: "TERMSHIFT_ERROR", error: String(err) });
       }
     })();
-
-    return true; // keep listener alive
+    // No return true — results are sent via chrome.tabs.sendMessage, not sendResponse.
+    // Returning undefined closes the channel cleanly so content.js sees no error.
   }
 });
 
