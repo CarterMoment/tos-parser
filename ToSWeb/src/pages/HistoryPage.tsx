@@ -64,7 +64,7 @@ export default function HistoryPage() {
           }
         }))
       })
-      .catch(e => setError(e.message))
+      .catch(e => { console.error('Failed to load scan history:', e); setError('Could not load scan history. Please refresh and try again.') })
       .finally(() => setLoading(false))
   }, [user])
 

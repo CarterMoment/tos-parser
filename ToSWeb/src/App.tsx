@@ -89,7 +89,10 @@ export default function App() {
           headers: { Authorization: `Bearer ${idToken}` },
           body,
         });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${await res.text()}`);
+        if (!res.ok) {
+          console.error(`File analysis failed (${res.status} ${res.statusText}):`, await res.text());
+          throw new Error("Analysis failed. Please try again.");
+        }
         setResult(await res.json());
         return;
       }
@@ -109,7 +112,7 @@ export default function App() {
             setStreaming(true);
           }
         })
-        .catch(() => {});
+        .catch(e => { console.error('Preview unavailable:', e); setStreaming(false); });
 
       const res = await fetch(`${apiUrl}/v1/analyze`, {
         method: "POST",
@@ -124,7 +127,8 @@ export default function App() {
         const msg = ct.includes("application/json")
           ? JSON.stringify(await res.json())
           : await res.text();
-        throw new Error(`${res.status} ${res.statusText}: ${msg}`);
+        console.error(`Analysis failed (${res.status} ${res.statusText}):`, msg);
+        throw new Error("Could not complete analysis. Please check your input and try again.");
       }
 
       setResult(await res.json());

@@ -20,5 +20,9 @@
     "run_at": "document_idle",
     "all_frames": true
   }],
+  "oauth2": {
+    "client_id": "479721416601-ba22dko719nh4or05uab36hmkbo4cpcj.apps.googleusercontent.com",
+    "scopes": ["openid", "email", "profile"]
+  },
   "icons": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" }
 }

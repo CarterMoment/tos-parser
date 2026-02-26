@@ -1,10 +1,6 @@
 (async () => {
   // ── Constants ──────────────────────────────────────────────────────────────
   const FIREBASE_API_KEY = 'AIzaSyAh_kQNqC3W4A8Cn9Hc9mJCBPjE-ywsNCI';
-  // Firebase Console → Authentication → Sign-in method → Google →
-  //   Web SDK configuration → Web client ID
-  // Also add chrome.identity.getRedirectURL() to that client's authorized redirect URIs.
-  const GOOGLE_WEB_CLIENT_ID = 'REPLACE_ME.apps.googleusercontent.com';
   const SIGN_IN_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
   const REFRESH_URL = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
   const WEB_APP_URL = 'https://termshift.com';
@@ -41,30 +37,10 @@
   }
 
   async function signInWithGoogle() {
-    const redirectUrl = chrome.identity.getRedirectURL();
-    const params = new URLSearchParams({
-      client_id: GOOGLE_WEB_CLIENT_ID,
-      response_type: 'token',
-      redirect_uri: redirectUrl,
-      scope: 'openid email profile',
-      prompt: 'select_account',
-    });
-    const authUrl = `https://accounts.google.com/o/oauth2/auth?${params}`;
-
     return new Promise((resolve, reject) => {
-      chrome.identity.launchWebAuthFlow({ url: authUrl, interactive: true }, async (responseUrl) => {
+      chrome.identity.getAuthToken({ interactive: true }, async (token) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
-          return;
-        }
-        if (!responseUrl) {
-          reject(new Error('Sign-in was cancelled.'));
-          return;
-        }
-        const fragment = new URL(responseUrl).hash.slice(1);
-        const accessToken = new URLSearchParams(fragment).get('access_token');
-        if (!accessToken) {
-          reject(new Error('No access token received from Google.'));
           return;
         }
         try {
@@ -74,8 +50,8 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                postBody: `access_token=${accessToken}&providerId=google.com`,
-                requestUri: redirectUrl,
+                postBody: `access_token=${token}&providerId=google.com`,
+                requestUri: 'https://termshift.com',
                 returnIdpCredential: true,
                 returnSecureToken: true,
               }),
