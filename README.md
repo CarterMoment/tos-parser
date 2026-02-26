@@ -16,7 +16,7 @@ Afterwards:
    
 ***Standard Use Case:***
 
-Navigate to https://app.gertly.com/
+Navigate to https://termshift.com/
 
 - Input a ToS document by copying and pasting (Ctrl+V) into the box or inputting a .txt file.
 

@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Gertly – ToS Analyzer",
+  "name": "Termshift – ToS Analyzer",
   "version": "1.0.0",
   "description": "Highlights risky Terms-of-Service clauses directly on web pages.",
   "action": { "default_popup": "popup/popup.html",
     "default_icon": { "16": "assets/icon16.png", "48": "assets/icon48.png", "128": "assets/icon128.png" } },
   "background": { "service_worker": "background.js" },
-  "permissions": ["contextMenus", "storage", "scripting", "activeTab", "tabs"],
+  "permissions": ["contextMenus", "storage", "scripting", "activeTab", "tabs", "identity"],
   "host_permissions": [
     "https://*/*",
     "http://*/*",
-    "https://app.gertly.com/*",
+    "https://termshift.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],

@@ -3,15 +3,19 @@ set -euo pipefail
 
 # ==== REQUIRED ====
 HOSTED_ZONE_ID=${HOSTED_ZONE_ID:?Set HOSTED_ZONE_ID (Route53 hosted zone ID, no /hostedzone/ prefix)}
-DOMAIN_ROOT=${DOMAIN_ROOT:?Set DOMAIN_ROOT (e.g., gertly.com)}
+DOMAIN_ROOT=${DOMAIN_ROOT:?Set DOMAIN_ROOT (e.g., termshift.com)}
 
 # ==== OPTIONAL ====
-SUBDOMAIN=${SUBDOMAIN:-app}
+SUBDOMAIN=${SUBDOMAIN:-}                # leave blank for root domain (termshift.com), or set to "app" for app.termshift.com
 REGION=${REGION:-us-east-1}             # ACM must be us-east-1 for CloudFront
-BUCKET=${BUCKET:-tos-mvp-web-cs3704}    # S3 *website* bucket
+BUCKET=${BUCKET:-termshift-web}          # S3 *website* bucket
 FN=${FN:-tos-mvp-api}                   # Lambda function to update CORS
 
-FQDN="${SUBDOMAIN}.${DOMAIN_ROOT}"
+if [[ -n "$SUBDOMAIN" ]]; then
+  FQDN="${SUBDOMAIN}.${DOMAIN_ROOT}"
+else
+  FQDN="${DOMAIN_ROOT}"
+fi
 S3_WEBSITE_HOST="${BUCKET}.s3-website-${REGION}.amazonaws.com"
 CF_ZONE_ID="Z2FDTNDATAQYW2"             # CloudFront hosted zone id
 

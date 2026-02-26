@@ -3,4 +3,5 @@ mangum
 pydantic
 python-multipart
 httpx
+firebase-admin
 pytest

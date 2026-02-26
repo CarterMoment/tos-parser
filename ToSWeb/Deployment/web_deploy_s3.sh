@@ -3,13 +3,13 @@ set -euo pipefail
 
 # --- config ---
 REGION=${AWS_REGION:-us-east-1}
-BUCKET=${BUCKET:-tos-mvp-web-cs3704}    # your unique bucket name
+BUCKET=${BUCKET:-termshift-web}          # your unique bucket name
 FN=${FN:-tos-mvp-api}                   # Lambda function name for CORS allowlist
+CUSTOM_DOMAIN=${CUSTOM_DOMAIN:-termshift.com}
 
 # robust paths no matter where you run from
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 WEB_DIR="$( cd "${SCRIPT_DIR}/.." && pwd )"    # ToSWeb/
-DIST_DIR="${WEB_DIR}/dist"
 
 echo "== Ensure bucket s3://${BUCKET} in ${REGION} =="
 
@@ -25,13 +25,11 @@ else
   echo "Bucket exists."
 fi
 
-echo "== Configure public website access (demo) =="
-# public-access-block (allow public policy)
+echo "== Configure public website access =="
 aws s3api put-public-access-block --bucket "$BUCKET" \
   --public-access-block-configuration \
   BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false
 
-# bucket policy (inline JSON – no file://)
 POLICY=$(cat <<JSON
 {
   "Version":"2012-10-17",
@@ -52,7 +50,7 @@ aws s3 website "s3://$BUCKET/" --index-document index.html --error-document inde
 
 echo "== Build Vite app =="
 pushd "$WEB_DIR" >/dev/null
-npm ci
+npm install
 npm run build
 popd >/dev/null
 
@@ -69,12 +67,13 @@ aws s3 cp "dist/index.html" "s3://$BUCKET/index.html" \
 popd >/dev/null
 
 SITE_URL="http://${BUCKET}.s3-website-${REGION}.amazonaws.com"
-echo "Site URL: $SITE_URL"
+echo "Site URL (S3, pre-CloudFront): $SITE_URL"
 
-echo "== Allow site origin to call Lambda Function URL (CORS) =="
+echo "== Update Lambda Function URL CORS =="
 aws lambda update-function-url-config \
-  --function-name tos-mvp-api \
-  --cors '{"AllowOrigins":[],"AllowMethods":[],"AllowHeaders":[]}'
-  echo "Note: ensure the Function URL exists for $FN."
+  --function-name "$FN" \
+  --cors "{\"AllowOrigins\":[\"$SITE_URL\",\"https://${CUSTOM_DOMAIN}\",\"http://localhost:5173\"],\"AllowMethods\":[\"GET\",\"POST\"],\"AllowHeaders\":[\"content-type\",\"authorization\"]}" >/dev/null || true
+echo "CORS updated for: $SITE_URL and https://${CUSTOM_DOMAIN}"
 
-echo "Done. Visit: $SITE_URL"
+echo ""
+echo "Done. Next step: run cf_provision_https.sh to attach CloudFront + SSL to https://${CUSTOM_DOMAIN}"

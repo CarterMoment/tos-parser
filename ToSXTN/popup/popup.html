@@ -1,11 +1,257 @@
 <!doctype html>
 <html>
-<head><meta charset="utf-8"><title>Gertly</title></head>
-<body style="font-family:sans-serif;width:260px;padding:10px;">
-  <h3>Gertly Settings</h3>
-  <label>API URL<br><input id="url" style="width:100%"></label><br><br>
-  <label>API Token<br><input id="token" type="password" style="width:100%"></label><br><br>
-  <button id="save">Save</button>
+<head>
+  <meta charset="utf-8">
+  <title>Termshift</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      width: 320px;
+      min-height: 180px;
+    }
+    .view { padding: 20px; }
+    .logo { font-size: 17px; font-weight: 700; color: #3b82f6; margin-bottom: 2px; }
+    .subtitle { font-size: 11px; color: #475569; margin-bottom: 18px; }
+
+    /* Auth view */
+    .auth-heading { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: #f1f5f9; }
+    label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #e2e8f0;
+      font-size: 13px;
+      outline: none;
+      margin-bottom: 10px;
+    }
+    input:focus { border-color: #3b82f6; }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-primary:hover:not(:disabled) { background: #2563eb; }
+    .btn-primary:disabled { background: #334155; color: #64748b; cursor: default; }
+
+    .btn-google {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      background: #ffffff;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+      border-radius: 6px;
+      padding: 9px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 13px;
+    }
+    .btn-google:hover:not(:disabled) { background: #f8f9fa; }
+    .btn-google:disabled { opacity: 0.6; cursor: default; }
+
+    .or-sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 13px;
+      font-size: 11px;
+      color: #334155;
+    }
+    .or-sep::before, .or-sep::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #1e293b;
+    }
+
+    .error-msg {
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #fca5a5;
+      margin-top: 10px;
+    }
+
+    /* Main view */
+    .main-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .user-email { font-size: 11px; color: #475569; margin-top: 2px; }
+    .btn-link {
+      background: none;
+      border: none;
+      color: #475569;
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+      margin-top: 3px;
+      white-space: nowrap;
+    }
+    .btn-link:hover { color: #94a3b8; }
+
+    /* Spinner */
+    .spinner-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 0;
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid #1e293b;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-label { font-size: 13px; color: #64748b; }
+
+    /* Results */
+    .results-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 13px;
+      margin-top: 12px;
+    }
+    .verdict-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .risk-count { font-size: 12px; color: #94a3b8; }
+    .sev-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .sev-HIGH { background: #450a0a; color: #fca5a5; }
+    .sev-MED  { background: #451a03; color: #fcd34d; }
+    .sev-LOW  { background: #052e16; color: #86efac; }
+
+    .span-list { border-top: 1px solid #0f172a; margin-top: 6px; padding-top: 6px; }
+    .span-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .more-label { font-size: 11px; color: #475569; margin-top: 6px; }
+
+    .btn-report {
+      display: block;
+      width: 100%;
+      background: #1d4ed8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      margin-top: 12px;
+    }
+    .btn-report:hover { background: #1e40af; }
+
+    .reset-link {
+      display: block;
+      text-align: center;
+      margin-top: 9px;
+      font-size: 11px;
+      color: #334155;
+      cursor: pointer;
+    }
+    .reset-link:hover { color: #64748b; }
+
+    .error-result {
+      background: #450a0a;
+      border: 1px solid #7f1d1d;
+      border-radius: 6px;
+      padding: 10px;
+      font-size: 12px;
+      color: #fca5a5;
+      margin-top: 12px;
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Auth view -->
+  <div id="auth-view" class="view">
+    <div class="logo">Termshift</div>
+    <div class="subtitle">AI-powered ToS analysis</div>
+    <div class="auth-heading">Sign in to your account</div>
+
+    <button id="google-btn" class="btn-google">
+      <svg width="17" height="17" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908C16.657 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      <span id="google-btn-label">Sign in with Google</span>
+    </button>
+
+    <div class="or-sep">or</div>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    <button class="btn-primary" id="signin-btn">Sign In</button>
+    <div class="error-msg" id="auth-error" style="display:none"></div>
+  </div>
+
+  <!-- Main view -->
+  <div id="main-view" class="view" style="display:none">
+    <div class="main-header">
+      <div>
+        <div class="logo" style="margin-bottom:0">Termshift</div>
+        <div class="user-email" id="user-email"></div>
+      </div>
+      <button class="btn-link" id="logout-btn">Sign out</button>
+    </div>
+
+    <button class="btn-primary" id="analyze-btn">Analyze This Page</button>
+
+    <div class="spinner-row" id="spinner-row" style="display:none">
+      <div class="spinner"></div>
+      <span class="spinner-label">Analyzing page…</span>
+    </div>
+
+    <div id="results-area"></div>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

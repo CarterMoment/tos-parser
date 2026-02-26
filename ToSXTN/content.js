@@ -1,17 +1,16 @@
 
 (() => {
-  if (window.__GERTLY_INJECTED__) return;
-  window.__GERTLY_INJECTED__ = true;
-
+  if (window.__TERMSHIFT_INJECTED__) return;
+  window.__TERMSHIFT_INJECTED__ = true;
 
 
 
 
 // ---------- config ----------
-const PANEL_ID = "gertly-bug-panel";
-const STYLE_ID = "gertly-bug-style";
-const HIGHLIGHT_CLASS = "gertly-highlight";
-const PENDING_CLASS = "gertly-pending";
+const PANEL_ID = "termshift-bug-panel";
+const STYLE_ID = "termshift-bug-style";
+const HIGHLIGHT_CLASS = "termshift-highlight";
+const PENDING_CLASS = "termshift-pending";
 
 // capture selection at right-click time so we can highlight it later
 let lastContextSelection = null;
@@ -62,9 +61,9 @@ function injectStylesOnce() {
   }
   #${PANEL_ID} .spinner {
     width:16px; height:16px; border:2px solid #333; border-top-color:#fff; border-radius:50%;
-    animation: gertly-spin 0.9s linear infinite;
+    animation: termshift-spin 0.9s linear infinite;
   }
-  @keyframes gertly-spin { to { transform: rotate(360deg); } }
+  @keyframes termshift-spin { to { transform: rotate(360deg); } }
 
   /* in-page highlights */
   mark.${HIGHLIGHT_CLASS}[data-sev="high"] { background: rgba(255,0,0,.18); outline: 1px solid rgba(255,0,0,.35); }
@@ -87,7 +86,7 @@ function ensurePanel() {
   root.id = PANEL_ID;
   root.innerHTML = `
     <header>
-      <div class="title">Gertly Flags</div>
+      <div class="title">Termshift Flags</div>
       <div class="actions">
         <button data-action="min">Min</button>
         <button data-action="close">Close</button>
@@ -182,7 +181,7 @@ function clearPendingOutline() {
 }
 
 function highlightSelection(spansOrSeverity) {
-  // If API provides spans: [{start,end,severity?}], they’re offsets into the selected text.
+  // If API provides spans: [{start,end,severity?}], they're offsets into the selected text.
   // If not, spansOrSeverity can be a string severity to wrap the whole selection.
   if (!lastContextSelection) return;
   const { rangeText, range } = lastContextSelection;
@@ -267,7 +266,7 @@ function wrapRange(r, severity) {
 }
 
 function getSelectionOffsetsWithin(container, selRange) {
-  // Returns {start,end} offsets of selection text within container’s full text
+  // Returns {start,end} offsets of selection text within container's full text
   const preRange = document.createRange();
   preRange.selectNodeContents(container);
   preRange.setEnd(selRange.startContainer, selRange.startOffset);
@@ -303,15 +302,14 @@ function toast(msg) {
   setTimeout(() => el.remove(), 3000);
 }
 
-// REPLACE your entire onMessage listener with this:
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg.type === "GERTLY_START") {
+  if (msg.type === "TERMSHIFT_START") {
     // show loader; keep pending outline around the selection
     setLoading(true);
     return;
   }
 
-  if (msg.type === "GERTLY_RESULT") {
+  if (msg.type === "TERMSHIFT_RESULT") {
     clearPendingOutline();
 
     const { summary, spans } = msg.payload || {};
@@ -337,17 +335,17 @@ chrome.runtime.onMessage.addListener((msg) => {
     return;
   }
 
-  if (msg.type === "GERTLY_ERROR") {
+  if (msg.type === "TERMSHIFT_ERROR") {
     clearPendingOutline();
     setLoading(false);
-    toast(`Gertly error: ${msg.error}`);
+    toast(`Termshift error: ${msg.error}`);
     return;
   }
 });
 
 // ==== Policy link detector & CTA (multi-link) ====
-const SUGGEST_BTN_ID = "gertly-suggest-btn";
-const MENU_ID = "gertly-policy-menu";
+const SUGGEST_BTN_ID = "termshift-suggest-btn";
+const MENU_ID = "termshift-policy-menu";
 let currentCandidates = [];
 
 // Patterns
@@ -422,7 +420,7 @@ function ensureSuggestButton() {
   if (btn) return btn;
   btn = document.createElement("button");
   btn.id = SUGGEST_BTN_ID;
-  btn.textContent = "Use Gertly to analyze policies";
+  btn.textContent = "Use Termshift to analyze policies";
   btn.style.cssText = `
     position: fixed; right: 18px; bottom: 86px; z-index: 2147483647;
     padding: 8px 12px; border-radius: 999px; border:1px solid #2a2a2a;
@@ -477,7 +475,7 @@ function renderPolicyMenu(items) {
       e.stopPropagation();
       togglePolicyMenu(false);
       setLoading(true);
-      chrome.runtime.sendMessage({ type: "GERTLY_ANALYZE_LINK", url: it.url, label: it.label });
+      chrome.runtime.sendMessage({ type: "TERMSHIFT_ANALYZE_LINK", url: it.url, label: it.label });
     };
     menu.appendChild(row);
   });
@@ -509,7 +507,7 @@ function updateSuggestion() {
 // Observe SPA changes / dynamic content
 const mo = new MutationObserver(() => debounce(updateSuggestion, 200));
 mo.observe(document.documentElement, { childList: true, subtree: true });
-window.addEventListener("popstate", updateSuggestion);  // fix: pass function, don’t call
+window.addEventListener("popstate", updateSuggestion);
 window.addEventListener("load", updateSuggestion);
 updateSuggestion();
 setTimeout(updateSuggestion, 400);
@@ -522,4 +520,3 @@ function debounce(fn, ms) {
 
 
 })();
-

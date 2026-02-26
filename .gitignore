@@ -82,3 +82,8 @@ ToSWeb/.env.local
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Firebase
+ToSAPI/firebaseServiceAccount.json
+
+.claude/

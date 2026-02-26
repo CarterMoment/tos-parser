@@ -29,12 +29,34 @@ wait_until_ready() {
 }
 
 retry_update_config() {
-  # Retries update-function-configuration to dodge ResourceConflictException
+  # Build env-vars JSON via Python so FIREBASE_SERVICE_ACCOUNT_JSON (which contains
+  # quotes and newlines) is encoded safely. Captured into a variable — no temp file,
+  # so no Windows /tmp path mismatch with AWS CLI.
+  local env_json
+  env_json=$(python - <<PY
+import json, os, sys
+vars = {
+    "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
+    "MODEL_ID":       os.environ.get("MODEL_ID", "gpt-4o-mini"),
+    "API_TOKEN":      os.environ.get("API_TOKEN", ""),
+}
+sa = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
+if sa:
+    vars["FIREBASE_SERVICE_ACCOUNT_JSON"] = sa
+else:
+    print("WARNING: FIREBASE_SERVICE_ACCOUNT_JSON not set locally.", file=sys.stderr)
+    print("         After deploy, set it manually in: Lambda console -> Configuration -> Environment variables", file=sys.stderr)
+    print("         Or re-run after: export FIREBASE_SERVICE_ACCOUNT_JSON=\$(cat firebaseServiceAccount.json)", file=sys.stderr)
+print(json.dumps({"Variables": vars}))
+PY
+)
+
+  # Retries to dodge ResourceConflictException
   for i in {1..10}; do
     if aws lambda update-function-configuration \
          --function-name "$FN" \
          --timeout 20 \
-         --environment "Variables={OPENAI_API_KEY=$OPENAI_API_KEY,MODEL_ID=$MODEL_ID,API_TOKEN=$API_TOKEN}" >/dev/null; then
+         --environment "$env_json" >/dev/null; then
       wait_until_ready
       return 0
     fi

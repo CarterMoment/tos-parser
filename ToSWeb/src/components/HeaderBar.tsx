@@ -1,77 +1,54 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { useDarkMode } from "../lib/useDarkMode";
+import { useAuth } from "../contexts/AuthContext";
 
 type Props = {
-  onPing: () => void;
   onChoose: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onAnalyze: () => void;
   analyzeDisabled: boolean;
-  /** NEW: pass loading from parent while analysis is running */
   loading: boolean;
 };
 
-export default function HeaderBar({ onPing, onChoose, onAnalyze, analyzeDisabled, loading }: Props) {
+export default function HeaderBar({ onChoose, onAnalyze, analyzeDisabled, loading }: Props) {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
-
-  // colors that work in both themes
-  const border = "var(--border-color)";
-  const bgPrimary = "var(--bg-primary)";
-  const cardBg = "var(--card-bg)";
-  const textPrimary = "var(--text-primary)";
-  const textSecondary = "var(--text-secondary)";
+  const { user, signOut } = useAuth();
 
   return (
-    <div style={{
-      position: "relative",
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "16px 20px",
-      borderBottom: `1px solid ${border}`,
-      width: "100%",
-      boxSizing: "border-box",
-      backgroundColor: bgPrimary
-    }}>
-      {/* Top indeterminate loading bar */}
+    <header className="relative flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 w-full box-border">
+
+      {/* Indeterminate loading bar */}
       {loading && (
-        <div aria-hidden
-             style={{
-               position: "absolute",
-               left: 0,
-               right: 0,
-               top: 0,
-               height: 3,
-               backgroundImage: `linear-gradient(90deg,
-                 transparent 0%,
-                 rgba(0,0,0,0.15) 20%,
-                 rgba(0,0,0,0.35) 50%,
-                 rgba(0,0,0,0.15) 80%,
-                 transparent 100%)`,
-               backgroundSize: "200% 100%",
-               animation: "gertly-indeterminate 1.2s linear infinite"
-             }}
+        <div
+          aria-hidden
+          className="absolute left-0 right-0 top-0 h-0.5"
+          style={{
+            backgroundImage: 'linear-gradient(90deg, transparent 0%, rgba(59,130,246,0.4) 20%, #2563eb 50%, rgba(59,130,246,0.4) 80%, transparent 100%)',
+            backgroundSize: '200% 100%',
+            animation: 'termshift-indeterminate 1.2s linear infinite',
+          }}
         />
       )}
 
+      {/* Brand */}
       <div>
-        <h1 style={{ margin: 0, color: textPrimary }}>Gertly</h1>
-        <div style={{ color: textSecondary }}>Upload a ToS and we’ll highlight risky clauses.</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-white">Termshift</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">Highlight risky clauses in any ToS</div>
       </div>
 
-      <div>
-        <button onClick={onPing} style={{ padding: "8px 10px", marginRight: 8 }}>Health Check</button>
+      {/* Actions */}
+      <div className="flex items-center gap-2">
 
-        <label style={{ marginRight: 8 }}>
-          <input type="file" accept=".txt,text/plain" onChange={onChoose} style={{ display: "none" }} />
-          <span style={{
-            padding: "8px 10px",
-            border: `1px solid ${border}`,
-            borderRadius: 6,
-            cursor: "pointer",
-            display: "inline-block",
-            backgroundColor: cardBg,
-            color: textPrimary
-          }}>
+        <Link
+          to="/history"
+          className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+        >
+          History
+        </Link>
+
+        <label className="cursor-pointer">
+          <input type="file" accept=".txt,text/plain" onChange={onChoose} className="hidden" />
+          <span className="px-3 py-1.5 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 transition cursor-pointer inline-block">
             Choose File
           </span>
         </label>
@@ -79,52 +56,49 @@ export default function HeaderBar({ onPing, onChoose, onAnalyze, analyzeDisabled
         <button
           onClick={onAnalyze}
           disabled={analyzeDisabled || loading}
-          style={{ padding: "8px 12px", borderRadius: 6, minWidth: 92, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+          className="px-4 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition inline-flex items-center gap-2"
           aria-busy={loading}
-          aria-live="polite"
         >
           {loading ? (
             <>
-              {/* SVG spinner (no external CSS needed) */}
-              <svg width="16" height="16" viewBox="0 0 24 24" role="img" aria-label="Loading">
-                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="3" />
+              <svg width="14" height="14" viewBox="0 0 24 24" role="img" aria-label="Loading">
+                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeOpacity="0.3" strokeWidth="3" />
                 <path d="M21 12a9 9 0 0 1-9 9" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
                   <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.9s" repeatCount="indefinite" />
                 </path>
               </svg>
               Analyzing…
             </>
-          ) : (
-            "Analyze"
-          )}
+          ) : 'Analyze'}
         </button>
 
         <button
           onClick={toggleDarkMode}
-          style={{
-            padding: "8px 12px",
-            borderRadius: 6,
-            fontSize: "1.2rem",
-            cursor: "pointer",
-            border: `1px solid ${border}`,
-            backgroundColor: cardBg,
-            marginLeft: 8
-          }}
+          className="px-2.5 py-1.5 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition"
           aria-label="Toggle dark mode"
         >
           {isDarkMode ? '🌙' : '☀️'}
         </button>
+
+        <div className="flex items-center gap-2 pl-3 border-l border-gray-200 dark:border-gray-700">
+          <span className="text-sm text-gray-600 dark:text-gray-400 max-w-[160px] truncate">
+            {user?.displayName ?? user?.email ?? ''}
+          </span>
+          <button
+            onClick={() => signOut()}
+            className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
-      {/* Local keyframes for the indeterminate bar */}
-      <style>
-        {`
-          @keyframes gertly-indeterminate {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-        `}
-      </style>
-    </div>
+      <style>{`
+        @keyframes termshift-indeterminate {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+    </header>
   );
 }
