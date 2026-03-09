@@ -65,23 +65,35 @@ async function getAuthToken() {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId !== "analyzeSelection" || !info.selectionText || !tab?.id) return;
 
-  // tell page we're starting (to show loader)
-  await sendToTab(tab.id, { type: "TERMSHIFT_START", selectionText: info.selectionText });
+  // Show loader immediately — don't block on auth/URL lookups
+  sendToTab(tab.id, { type: "TERMSHIFT_START", selectionText: info.selectionText });
 
-  const { apiUrl } = await chrome.storage.sync.get({
-    apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws'
-  });
-  const token = await getAuthToken();
+  // Fetch auth token + API URL in parallel
+  const [{ apiUrl }, token] = await Promise.all([
+    chrome.storage.sync.get({ apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws' }),
+    getAuthToken()
+  ]);
+
+  const text = info.selectionText.slice(0, 200000);
 
   try {
+    // Fire fast summary concurrently — gives early feedback in the overlay (~2s)
+    let fullDone = false;
+    fetch(`${apiUrl}/v1/analyze-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ text })
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(summary => { if (summary && !fullDone) sendToTab(tab.id, { type: 'TERMSHIFT_SUMMARY', summary }); })
+      .catch(() => {});
+
     const res = await fetch(`${apiUrl}/v1/analyze-raw`, {
       method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-        "Authorization": `Bearer ${token}`
-      },
-      body: info.selectionText.slice(0, 200000)
+      headers: { "Content-Type": "text/plain", "Authorization": `Bearer ${token}` },
+      body: text
     });
+    fullDone = true;
     if (!res.ok) throw new Error(`API error ${res.status}`);
     const data = await res.json();
     await sendToTab(tab.id, { type: "TERMSHIFT_RESULT", payload: data });
@@ -97,49 +109,56 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "POPUP_ANALYZE_PAGE") {
     (async () => {
       try {
-        await chrome.storage.local.set({
-          lastAnalysis: { status: 'analyzing', timestamp: Date.now() }
-        });
+        // Non-blocking status write + parallel lookups
+        chrome.storage.local.set({ lastAnalysis: { status: 'analyzing', timestamp: Date.now() } });
 
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const [[tab], { apiUrl }] = await Promise.all([
+          chrome.tabs.query({ active: true, currentWindow: true }),
+          chrome.storage.sync.get({ apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws' })
+        ]);
         if (!tab?.id) throw new Error('No active tab');
 
-        const [{ result: pageText }] = await chrome.scripting.executeScript({
-          target: { tabId: tab.id, allFrames: false },
-          func: extractMainText
-        });
-
-        const token = await getAuthToken();
+        // Extract page text + get auth token in parallel
+        const [[{ result: pageText }], token] = await Promise.all([
+          chrome.scripting.executeScript({ target: { tabId: tab.id, allFrames: false }, func: extractMainText }),
+          getAuthToken()
+        ]);
         if (!token) throw new Error('Not signed in. Please sign in to the extension first.');
 
-        const { apiUrl } = await chrome.storage.sync.get({
-          apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws'
-        });
+        const text = (pageText || '').slice(0, 200000);
+
+        // Fire fast summary concurrently — popup shows early feedback in ~2s
+        let fullDone = false;
+        fetch(`${apiUrl}/v1/analyze-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ text })
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(summary => {
+            if (summary && !fullDone)
+              chrome.runtime.sendMessage({ type: 'POPUP_SUMMARY_READY', summary }).catch(() => {});
+          })
+          .catch(() => {});
 
         const res = await fetch(`${apiUrl}/v1/analyze-raw`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'text/plain',
-            'Authorization': `Bearer ${token}`
-          },
-          body: (pageText || '').slice(0, 200000)
+          headers: { 'Content-Type': 'text/plain', 'Authorization': `Bearer ${token}` },
+          body: text
         });
+        fullDone = true;
         if (!res.ok) throw new Error(`API error ${res.status}`);
 
         const data = await res.json();
         const scanId = data.scan_id || null;
 
-        await chrome.storage.local.set({
-          lastAnalysis: {
-            status: 'complete', data, scanId, pageUrl: tab.url, timestamp: Date.now()
-          }
+        chrome.storage.local.set({
+          lastAnalysis: { status: 'complete', data, scanId, pageUrl: tab.url, timestamp: Date.now() }
         });
         sendResponse({ success: true, data, scanId });
         chrome.runtime.sendMessage({ type: 'POPUP_ANALYSIS_DONE', data, scanId }).catch(() => {});
       } catch (e) {
-        await chrome.storage.local.set({
-          lastAnalysis: { status: 'error', error: e.message, timestamp: Date.now() }
-        });
+        chrome.storage.local.set({ lastAnalysis: { status: 'error', error: e.message, timestamp: Date.now() } });
         sendResponse({ success: false, error: e.message });
         chrome.runtime.sendMessage({ type: 'POPUP_ANALYSIS_DONE', error: e.message }).catch(() => {});
       }
@@ -167,26 +186,32 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         // 3) Wait until ready enough
         await waitForTabReady(target.id);
 
-        // 4) Extract page text
-        const [{ result: pageText }] = await chrome.scripting.executeScript({
-          target: { tabId: target.id, allFrames: false },
-          func: extractMainText
-        });
+        // 4) Extract page text + fetch auth/URL in parallel
+        const [[{ result: pageText }], { apiUrl }, token] = await Promise.all([
+          chrome.scripting.executeScript({ target: { tabId: target.id, allFrames: false }, func: extractMainText }),
+          chrome.storage.sync.get({ apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws' }),
+          getAuthToken()
+        ]);
 
-        // 5) Call your API
-        const { apiUrl } = await chrome.storage.sync.get({
-          apiUrl: 'https://xwaznzasl4i26acgf4zjkqw2za0wlshv.lambda-url.us-east-1.on.aws'
-        });
-        const token = await getAuthToken();
+        const text = (pageText || '').slice(0, 200000);
+
+        // 5) Fire fast summary concurrently for early overlay feedback
+        let fullDone = false;
+        fetch(`${apiUrl}/v1/analyze-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ text })
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(summary => { if (summary && !fullDone) chrome.tabs.sendMessage(sourceTabId, { type: 'TERMSHIFT_SUMMARY', summary }); })
+          .catch(() => {});
 
         const res = await fetch(`${apiUrl}/v1/analyze-raw`, {
           method: "POST",
-          headers: {
-            "Content-Type": "text/plain",
-            "Authorization": `Bearer ${token}`
-          },
-          body: (pageText || "").slice(0, 200000)
+          headers: { "Content-Type": "text/plain", "Authorization": `Bearer ${token}` },
+          body: text
         });
+        fullDone = true;
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const payload = await res.json();
 
@@ -224,38 +249,42 @@ function waitForTabReady(tabId, timeoutMs = 15000) {
 // This function is serialized and executed in the target page context.
 // Keep it self-contained — no external variables.
 function extractMainText() {
-  function visible(el) {
-    const r = el.getBoundingClientRect();
-    const cs = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && cs.visibility !== "hidden";
-  }
-  function textLen(el) {
-    const role = el.getAttribute && (el.getAttribute("role") || "");
-    if (/navigation|banner|contentinfo|complementary/i.test(role)) return 0;
-    const t = (el.innerText || "").trim();
-    return t.split(/\s+/).length;
-  }
-  function mainContainer() {
-    const main = document.querySelector("main, article, [role='main']");
-    if (main && visible(main)) return main;
-    let best = null, score = 0;
-    for (const el of document.querySelectorAll("div, section, article")) {
-      const s = textLen(el);
-      if (s > score && visible(el)) { best = el; score = s; }
-    }
-    return best || document.body;
-  }
-  function paraNodes(container) {
-    const nodes = [...container.querySelectorAll("p, li, .paragraph, .clause, .section")]
-      .filter(visible)
-      .filter(n => (n.innerText || "").trim().length > 40);
-    if (nodes.length) return nodes;
-    return [...container.querySelectorAll("div")]
-      .filter(n => (n.innerText || "").split(/\s+/).length > 40);
+  const SKIP_ROLES = /navigation|banner|contentinfo|complementary|search/i;
+  const SKIP_TAGS = /^(script|style|noscript|nav|header|footer|aside|iframe|svg)$/i;
+  const SKIP_ID_CLS = /\b(nav|navbar|header|footer|sidebar|cookie|advertisement|popup|modal|menu|banner|breadcrumb)\b/i;
+
+  function isBoilerplate(el) {
+    const role = el.getAttribute && (el.getAttribute('role') || '');
+    if (SKIP_ROLES.test(role)) return true;
+    if (SKIP_TAGS.test(el.tagName)) return true;
+    const cls = typeof el.className === 'string' ? el.className : '';
+    const id = el.id || '';
+    return SKIP_ID_CLS.test(cls) || SKIP_ID_CLS.test(id);
   }
 
-  const cont = mainContainer();
-  const paras = paraNodes(cont);
-  const text = paras.map(n => (n.innerText || "").trim()).join("\n\n");
-  return text || (document.body.innerText || "");
+  function isVisible(el) {
+    const cs = getComputedStyle(el);
+    return cs.display !== 'none' && cs.visibility !== 'hidden' && cs.opacity !== '0';
+  }
+
+  // Find the most likely main content container
+  for (const sel of ['main', 'article', '[role="main"]', '#main-content', '.main-content', '#content', '.content']) {
+    const el = document.querySelector(sel);
+    if (el && isVisible(el)) {
+      const text = (el.innerText || '').trim();
+      if (text.length > 500) return text.slice(0, 200000);
+    }
+  }
+
+  // Fallback: find largest non-boilerplate block
+  let best = null, bestLen = 0;
+  for (const el of document.querySelectorAll('div, section, article')) {
+    if (!isVisible(el) || isBoilerplate(el)) continue;
+    const len = (el.innerText || '').length;
+    if (len > bestLen) { best = el; bestLen = len; }
+  }
+
+  const source = best || document.body;
+  const text = (source.innerText || '').trim();
+  return (text.length > 200 ? text : (document.body.innerText || '').trim()).slice(0, 200000);
 }

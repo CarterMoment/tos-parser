@@ -4,48 +4,67 @@
   <meta charset="utf-8">
   <title>Termshift</title>
   <style>
+    :root {
+      --bg-primary:   #0f172a;
+      --bg-surface:   #1e293b;
+      --bg-card:      #263548;
+      --accent:       #3b82f6;
+      --accent-hover: #2563eb;
+      --text-primary: #f1f5f9;
+      --text-muted:   #94a3b8;
+      --border:       #334155;
+      --risk-critical:#ef4444;
+      --risk-high:    #f97316;
+      --risk-med:     #f59e0b;
+      --risk-low:     #22c55e;
+      --radius-card:  10px;
+      --radius-btn:   6px;
+      --radius-input: 8px;
+    }
+
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       width: 320px;
       min-height: 180px;
     }
     .view { padding: 20px; }
-    .logo { font-size: 17px; font-weight: 700; color: #3b82f6; margin-bottom: 2px; }
-    .subtitle { font-size: 11px; color: #475569; margin-bottom: 18px; }
+    .logo { font-size: 17px; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+    .subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 18px; }
 
     /* Auth view */
-    .auth-heading { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: #f1f5f9; }
-    label { display: block; font-size: 11px; color: #94a3b8; margin-bottom: 4px; }
+    .auth-heading { font-size: 15px; font-weight: 600; margin-bottom: 14px; color: var(--text-primary); }
+    label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
     input[type="email"], input[type="password"] {
       width: 100%;
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 6px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-input);
       padding: 8px 10px;
-      color: #e2e8f0;
+      color: var(--text-primary);
       font-size: 13px;
       outline: none;
       margin-bottom: 10px;
     }
-    input:focus { border-color: #3b82f6; }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
 
     /* Buttons */
     .btn-primary {
       width: 100%;
-      background: #3b82f6;
+      background: var(--accent);
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       padding: 9px 16px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
     }
-    .btn-primary:hover:not(:disabled) { background: #2563eb; }
-    .btn-primary:disabled { background: #334155; color: #64748b; cursor: default; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--border); color: var(--text-muted); cursor: default; }
 
     .btn-google {
       width: 100%;
@@ -56,14 +75,14 @@
       background: #ffffff;
       color: #3c4043;
       border: 1px solid #dadce0;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       padding: 9px 16px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       margin-bottom: 13px;
     }
-    .btn-google:hover:not(:disabled) { background: #f8f9fa; }
+    .btn-google:hover:not(:disabled) { background: #f8f9fa; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
     .btn-google:disabled { opacity: 0.6; cursor: default; }
 
     .or-sep {
@@ -72,19 +91,19 @@
       gap: 10px;
       margin-bottom: 13px;
       font-size: 11px;
-      color: #334155;
+      color: var(--text-muted);
     }
     .or-sep::before, .or-sep::after {
       content: '';
       flex: 1;
       height: 1px;
-      background: #1e293b;
+      background: var(--border);
     }
 
     .error-msg {
       background: #450a0a;
       border: 1px solid #7f1d1d;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       padding: 8px 10px;
       font-size: 12px;
       color: #fca5a5;
@@ -98,18 +117,18 @@
       justify-content: space-between;
       margin-bottom: 14px;
     }
-    .user-email { font-size: 11px; color: #475569; margin-top: 2px; }
+    .user-email { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
     .btn-link {
       background: none;
       border: none;
-      color: #475569;
+      color: var(--text-muted);
       font-size: 11px;
       cursor: pointer;
       padding: 0;
       margin-top: 3px;
       white-space: nowrap;
     }
-    .btn-link:hover { color: #94a3b8; }
+    .btn-link:hover { color: var(--text-primary); }
 
     /* Spinner */
     .spinner-row {
@@ -120,20 +139,20 @@
     }
     .spinner {
       width: 18px; height: 18px;
-      border: 2px solid #1e293b;
-      border-top-color: #3b82f6;
+      border: 2px solid var(--bg-surface);
+      border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       flex-shrink: 0;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner-label { font-size: 13px; color: #64748b; }
+    .spinner-label { font-size: 13px; color: var(--text-muted); }
 
     /* Results */
     .results-card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 8px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
       padding: 13px;
       margin-top: 12px;
     }
@@ -143,7 +162,7 @@
       justify-content: space-between;
       margin-bottom: 10px;
     }
-    .risk-count { font-size: 12px; color: #94a3b8; }
+    .risk-count { font-size: 12px; color: var(--text-muted); }
     .sev-badge {
       font-size: 11px;
       font-weight: 700;
@@ -154,25 +173,25 @@
     .sev-MED  { background: #451a03; color: #fcd34d; }
     .sev-LOW  { background: #052e16; color: #86efac; }
 
-    .span-list { border-top: 1px solid #0f172a; margin-top: 6px; padding-top: 6px; }
+    .span-list { border-top: 1px solid var(--bg-primary); margin-top: 6px; padding-top: 6px; }
     .span-item {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 4px 0;
       font-size: 12px;
-      color: #cbd5e1;
+      color: var(--text-primary);
     }
     .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .more-label { font-size: 11px; color: #475569; margin-top: 6px; }
+    .more-label { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 
     .btn-report {
       display: block;
       width: 100%;
-      background: #1d4ed8;
+      background: var(--accent);
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       padding: 8px 16px;
       font-size: 13px;
       font-weight: 600;
@@ -180,27 +199,108 @@
       text-align: center;
       margin-top: 12px;
     }
-    .btn-report:hover { background: #1e40af; }
+    .btn-report:hover { background: var(--accent-hover); }
 
     .reset-link {
       display: block;
       text-align: center;
       margin-top: 9px;
       font-size: 11px;
-      color: #334155;
+      color: var(--border);
       cursor: pointer;
     }
-    .reset-link:hover { color: #64748b; }
+    .reset-link:hover { color: var(--text-muted); }
 
     .error-result {
       background: #450a0a;
       border: 1px solid #7f1d1d;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       padding: 10px;
       font-size: 12px;
       color: #fca5a5;
       margin-top: 12px;
       line-height: 1.4;
+    }
+
+    /* ── Unified header ── */
+    .ts-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .ts-wordmark {
+      font-size: 21px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .ts-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .ts-status-dot.authenticated { background: var(--risk-low); }
+    .ts-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ts-greeting {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .ts-signout-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 5px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 0;
+    }
+    .ts-signout-btn:hover { color: var(--text-primary); background: var(--bg-surface); }
+
+    /* ── Enhanced analyze button ── */
+    .btn-analyze {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 11px 16px;
+      font-size: 14px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-analyze:active:not(:disabled) { transform: scale(0.98); }
+
+    /* ── Auth footer ── */
+    .auth-footer {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .auth-footer a { color: var(--accent); text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+
+    /* ── Inline button spinner ── */
+    .btn-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 5px;
     }
   </style>
 </head>
@@ -208,8 +308,10 @@
 
   <!-- Auth view -->
   <div id="auth-view" class="view">
-    <div class="logo">Termshift</div>
-    <div class="subtitle">AI-powered ToS analysis</div>
+    <div class="ts-header">
+      <span class="ts-wordmark">Termshift</span>
+      <span class="ts-status-dot"></span>
+    </div>
     <div class="auth-heading">Sign in to your account</div>
 
     <button id="google-btn" class="btn-google">
@@ -228,21 +330,38 @@
     <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
     <label for="password">Password</label>
     <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
-    <button class="btn-primary" id="signin-btn">Sign In</button>
+    <button class="btn-primary" id="signin-btn"><span id="signin-btn-content">Sign In</span></button>
     <div class="error-msg" id="auth-error" style="display:none"></div>
+    <div class="auth-footer">
+      Don't have an account? <a href="https://termshift.com/signup" target="_blank" rel="noopener">Sign up</a>
+    </div>
   </div>
 
   <!-- Main view -->
   <div id="main-view" class="view" style="display:none">
-    <div class="main-header">
+    <div class="ts-header">
       <div>
-        <div class="logo" style="margin-bottom:0">Termshift</div>
-        <div class="user-email" id="user-email"></div>
+        <span class="ts-wordmark">Termshift</span>
+        <div class="ts-greeting">Hi <span id="user-greeting">there</span></div>
       </div>
-      <button class="btn-link" id="logout-btn">Sign out</button>
+      <div class="ts-header-right">
+        <span class="ts-status-dot authenticated"></span>
+        <button class="ts-signout-btn" id="logout-btn" title="Sign out">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
-    <button class="btn-primary" id="analyze-btn">Analyze This Page</button>
+    <button class="btn-primary btn-analyze" id="analyze-btn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Analyze This Page
+    </button>
 
     <div class="spinner-row" id="spinner-row" style="display:none">
       <div class="spinner"></div>

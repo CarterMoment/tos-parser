@@ -25,15 +25,15 @@
   }
 
   async function checkAuth() {
-    const local = await chrome.storage.local.get(['idToken', 'refreshToken', 'email', 'expiresAt']);
+    const local = await chrome.storage.local.get(['idToken', 'refreshToken', 'email', 'displayName', 'expiresAt']);
     if (!local.idToken) return null;
     if (Date.now() > (local.expiresAt || 0) - 5 * 60 * 1000) {
       if (!local.refreshToken) return null;
       const refreshed = await doRefresh(local.refreshToken);
       if (!refreshed) return null;
-      return { idToken: refreshed.idToken, email: local.email };
+      return { idToken: refreshed.idToken, email: local.email, displayName: local.displayName || '' };
     }
-    return { idToken: local.idToken, email: local.email };
+    return { idToken: local.idToken, email: local.email, displayName: local.displayName || '' };
   }
 
   async function signInWithGoogle() {
@@ -63,6 +63,7 @@
             idToken: d.idToken,
             refreshToken: d.refreshToken,
             email: d.email,
+            displayName: d.displayName || '',
             expiresAt: Date.now() + parseInt(d.expiresIn) * 1000,
           };
           await chrome.storage.local.set(stored);
@@ -96,6 +97,7 @@
       idToken: d.idToken,
       refreshToken: d.refreshToken,
       email: d.email,
+      displayName: d.displayName || '',
       expiresAt: Date.now() + parseInt(d.expiresIn) * 1000,
     };
     await chrome.storage.local.set(stored);
@@ -103,6 +105,15 @@
   }
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
+  function getFirstName(nameOrEmail) {
+    if (!nameOrEmail) return 'there';
+    if (nameOrEmail.includes('@')) {
+      const local = nameOrEmail.split('@')[0].replace(/[._-].*/, '');
+      return local.charAt(0).toUpperCase() + local.slice(1).toLowerCase();
+    }
+    return nameOrEmail.split(' ')[0];
+  }
+
   function escHtml(str) {
     return String(str)
       .replace(/&/g, '&amp;')
@@ -116,10 +127,10 @@
     document.getElementById('main-view').style.display = 'none';
   }
 
-  function showMain(email) {
+  function showMain(email, displayName) {
     document.getElementById('auth-view').style.display = 'none';
     document.getElementById('main-view').style.display = 'block';
-    document.getElementById('user-email').textContent = email || '';
+    document.getElementById('user-greeting').textContent = getFirstName(displayName || email || '');
   }
 
   function setSpinner(visible) {
@@ -127,9 +138,7 @@
   }
 
   function setAnalyzeBtn(enabled) {
-    const btn = document.getElementById('analyze-btn');
-    btn.disabled = !enabled;
-    btn.textContent = 'Analyze This Page';
+    document.getElementById('analyze-btn').disabled = !enabled;
   }
 
   function renderResults(data, scanId) {
@@ -220,7 +229,7 @@
     errEl.style.display = 'none';
     try {
       const result = await signInWithGoogle();
-      showMain(result.email);
+      showMain(result.email, result.displayName);
     } catch (e) {
       // Don't show an error box for user-cancelled flows
       const msg = e.message || '';
@@ -235,21 +244,22 @@
 
   async function attemptSignIn() {
     const signinBtn = document.getElementById('signin-btn');
+    const signinContent = document.getElementById('signin-btn-content');
     const errEl = document.getElementById('auth-error');
     signinBtn.disabled = true;
-    signinBtn.textContent = 'Signing in…';
+    signinContent.innerHTML = '<span class="btn-spinner"></span>Signing in…';
     errEl.style.display = 'none';
     try {
       const result = await signIn(
         document.getElementById('email').value.trim(),
         document.getElementById('password').value
       );
-      showMain(result.email);
+      showMain(result.email, result.displayName);
     } catch (e) {
       errEl.textContent = e.message;
       errEl.style.display = 'block';
       signinBtn.disabled = false;
-      signinBtn.textContent = 'Sign In';
+      signinContent.textContent = 'Sign In';
     }
   }
 
@@ -287,6 +297,17 @@
     });
   }
 
+  // ── Early summary feedback (fires ~2s before full result) ──────────────────
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type !== 'POPUP_SUMMARY_READY') return;
+    const spinnerRow = document.getElementById('spinner-row');
+    if (!spinnerRow || spinnerRow.style.display === 'none') return; // already resolved
+    const count = msg.summary?.risk_count ?? '?';
+    const sev = String(msg.summary?.highest_severity || '').toUpperCase();
+    const label = spinnerRow.querySelector('.spinner-label');
+    if (label) label.textContent = `${count} risk${count !== 1 ? 's' : ''} found (${sev}) — loading breakdown\u2026`;
+  });
+
   // ── Bind event listeners (once, at startup) ────────────────────────────────
   document.getElementById('google-btn').addEventListener('click', attemptGoogleSignIn);
   document.getElementById('signin-btn').addEventListener('click', attemptSignIn);
@@ -301,7 +322,7 @@
   if (!auth) {
     showAuth();
   } else {
-    showMain(auth.email);
+    showMain(auth.email, auth.displayName);
     const { lastAnalysis } = await chrome.storage.local.get(['lastAnalysis']);
     if (lastAnalysis?.status === 'analyzing') {
       setAnalyzeBtn(false);

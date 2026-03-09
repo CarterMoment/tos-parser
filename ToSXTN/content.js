@@ -15,55 +15,94 @@ const PENDING_CLASS = "termshift-pending";
 // capture selection at right-click time so we can highlight it later
 let lastContextSelection = null;
 
+// loading stage timer management
+let _loadingTimers = [];
+function clearLoadingTimers() {
+  _loadingTimers.forEach(t => clearTimeout(t));
+  _loadingTimers = [];
+}
+
 // ---------- styles ----------
 function injectStylesOnce() {
   if (document.getElementById(STYLE_ID)) return;
   const css = `
   #${PANEL_ID} {
+    --bg-primary:   #0f172a;
+    --bg-surface:   #1e293b;
+    --bg-card:      #263548;
+    --accent:       #3b82f6;
+    --accent-hover: #2563eb;
+    --text-primary: #f1f5f9;
+    --text-muted:   #94a3b8;
+    --border:       #334155;
+    --risk-high:    #f97316;
+    --risk-med:     #f59e0b;
+    --risk-low:     #22c55e;
+    --radius-card:  10px;
+    --radius-btn:   6px;
     position: fixed; right: 18px; bottom: 18px; z-index: 2147483647;
-    width: 320px; max-height: 60vh; background: #111; color: #fff;
-    border-radius: 12px; box-shadow: 0 18px 40px rgba(0,0,0,.35);
-    overflow: hidden; font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto;
+    width: 320px; max-height: 60vh;
+    background: var(--bg-primary); color: var(--text-primary);
+    border-top: 3px solid var(--accent);
+    border-radius: 12px; box-shadow: 0 18px 40px rgba(0,0,0,.45);
+    overflow: hidden; font: 13px/1.4 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto;
     display: flex; flex-direction: column; transform: translateY(0); opacity: 0; pointer-events: none;
     transition: opacity .18s ease, transform .18s ease;
   }
   #${PANEL_ID}.open { opacity: 1; pointer-events: auto; }
   #${PANEL_ID} header {
     display:flex; align-items:center; justify-content:space-between;
-    padding:10px 12px; background:#181818; border-bottom:1px solid #2a2a2a;
+    padding:10px 12px; background: var(--bg-surface); border-bottom:1px solid var(--border);
   }
-  #${PANEL_ID} header .title { font-weight:600; font-size:13px; }
-  #${PANEL_ID} header .actions { display:flex; gap:6px; }
-  #${PANEL_ID} header button {
-    background:#222; color:#ddd; border:1px solid #333; border-radius:8px; padding:4px 8px; cursor:pointer;
+  #${PANEL_ID} header .ts-wordmark { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:-0.02em; line-height:1; }
+  #${PANEL_ID} header .ts-header-label { font-size:11px; color:var(--text-muted); font-weight:400; margin-left:3px; }
+  #${PANEL_ID} header .actions { display:flex; gap:4px; align-items:center; }
+  #${PANEL_ID} header .icon-btn {
+    width:24px; height:24px; background:transparent; color:var(--text-muted);
+    border:none; border-radius:5px; cursor:pointer; padding:0;
+    display:flex; align-items:center; justify-content:center; line-height:0;
   }
-  #${PANEL_ID} header button:hover { background:#2b2b2b; }
+  #${PANEL_ID} header .icon-btn:hover { background:var(--bg-card); color:var(--text-primary); }
   #${PANEL_ID} .body { padding:10px 10px 12px; overflow:auto; }
-  #${PANEL_ID} .summary { display:flex; gap:8px; margin-bottom:8px; font-size:12px; color:#bbb; }
+  #${PANEL_ID} .summary { display:flex; gap:8px; margin-bottom:8px; font-size:12px; color: var(--text-muted); }
   #${PANEL_ID} .pill {
-    display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; border:1px solid #333; background:#1b1b1b;
+    display:inline-flex; align-items:center; gap:6px; padding:2px 8px;
+    border-radius:999px; border:1px solid var(--border); background: var(--bg-surface);
   }
   #${PANEL_ID} .list { display:flex; flex-direction:column; gap:8px; }
   #${PANEL_ID} .item {
-    padding:8px; border:1px solid #2a2a2a; border-radius:8px; background:#161616;
+    padding:8px 10px; border:1px solid var(--border);
+    border-radius: var(--radius-card); background: var(--bg-card);
+    animation: termshift-fadein 0.25s ease both;
   }
-  #${PANEL_ID} .sev { font-size:11px; font-weight:600; margin-right:6px; }
-  #${PANEL_ID} .sev.high { color:#ff6b6b; }
-  #${PANEL_ID} .sev.med { color:#ffb84d; }
-  #${PANEL_ID} .sev.low { color:#ffd666; }
-  #${PANEL_ID} .reason { color:#ddd; }
-  #${PANEL_ID} .text { color:#9aa1a6; margin-top:6px; white-space:pre-wrap; }
-  #${PANEL_ID} .empty { color:#9aa1a6; text-align:center; padding:12px 8px; }
+  #${PANEL_ID} .item.sev-high { border-left: 3px solid var(--risk-high); }
+  #${PANEL_ID} .item.sev-med  { border-left: 3px solid var(--risk-med); }
+  #${PANEL_ID} .item.sev-low  { border-left: 3px solid var(--risk-low); }
+  @keyframes termshift-fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
 
-  /* loader row */
-  #${PANEL_ID} .loader {
-    display:flex; align-items:center; gap:10px; color:#bbb; padding:10px 8px;
+  #${PANEL_ID} .sev-badge { display:inline-flex; align-items:center; padding:1px 7px; border-radius:999px; font-size:10px; font-weight:700; flex-shrink:0; }
+  #${PANEL_ID} .sev-badge.high { background:#450a0a; color:#fca5a5; }
+  #${PANEL_ID} .sev-badge.med  { background:#451a03; color:#fcd34d; }
+  #${PANEL_ID} .sev-badge.low  { background:#052e16; color:#86efac; }
+  #${PANEL_ID} .reason { color: var(--text-primary); font-size:12px; line-height:1.4; }
+  #${PANEL_ID} .text { color: var(--text-muted); margin-top:5px; white-space:pre-wrap; line-height:1.5; font-size:12px; }
+  #${PANEL_ID} .empty { color: var(--text-muted); text-align:center; padding:12px 8px; }
+
+  /* progress */
+  #${PANEL_ID} .ts-progress-wrap { padding:12px 12px 14px; }
+  #${PANEL_ID} .ts-progress-label { font-size:12px; color:var(--text-muted); margin-bottom:8px; transition:opacity 0.2s ease; }
+  #${PANEL_ID} .ts-progress-track { height:4px; background:var(--bg-card); border-radius:2px; overflow:hidden; }
+  #${PANEL_ID} .ts-progress-bar { height:100%; background:var(--accent); border-radius:2px; transition:width 0.6s ease; width:0%; }
+
+  /* bottom actions */
+  #${PANEL_ID} .btn-report {
+    display:block; width:100%; background:var(--accent); color:#fff;
+    border:none; border-radius:var(--radius-btn); padding:8px 16px;
+    font-size:12px; font-weight:600; cursor:pointer; text-align:center; margin-top:10px;
   }
-  #${PANEL_ID} .spinner {
-    width:16px; height:16px; border:2px solid #333; border-top-color:#fff; border-radius:50%;
-    animation: termshift-spin 0.9s linear infinite;
-  }
-  @keyframes termshift-spin { to { transform: rotate(360deg); } }
+  #${PANEL_ID} .btn-report:hover { background:var(--accent-hover); }
+  #${PANEL_ID} .ts-scan-again { display:block; text-align:center; margin-top:8px; font-size:11px; color:var(--border); cursor:pointer; }
+  #${PANEL_ID} .ts-scan-again:hover { color:var(--text-muted); }
 
   /* in-page highlights */
   mark.${HIGHLIGHT_CLASS}[data-sev="high"] { background: rgba(255,0,0,.18); outline: 1px solid rgba(255,0,0,.35); }
@@ -86,15 +125,20 @@ function ensurePanel() {
   root.id = PANEL_ID;
   root.innerHTML = `
     <header>
-      <div class="title">Termshift Flags</div>
+      <div style="display:flex;align-items:baseline;gap:0">
+        <span class="ts-wordmark">Termshift</span>
+        <span class="ts-header-label">Flags</span>
+      </div>
       <div class="actions">
-        <button data-action="min">Min</button>
-        <button data-action="close">Close</button>
+        <button class="icon-btn" data-action="min" title="Minimize">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="icon-btn" data-action="close" title="Close">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
     </header>
-    <div class="body">
-      <div class="loader"><div class="spinner"></div><div>Analyzing selection…</div></div>
-    </div>
+    <div class="body"></div>
   `;
   document.documentElement.appendChild(root);
 
@@ -120,24 +164,54 @@ function ensurePanel() {
 }
 
 function setLoading(isLoading, summary) {
+  clearLoadingTimers();
   const root = ensurePanel();
   const body = root.querySelector(".body");
+
   if (isLoading) {
-    body.innerHTML = `<div class="loader"><div class="spinner"></div><div>Analyzing selection…</div></div>`;
+    body.innerHTML = `
+      <div class="ts-progress-wrap">
+        <div class="ts-progress-label" id="ts-prog-label">Extracting text\u2026</div>
+        <div class="ts-progress-track">
+          <div class="ts-progress-bar" id="ts-prog-bar"></div>
+        </div>
+      </div>
+    `;
+    // Kick bar to 15% on next frame so CSS transition fires
+    requestAnimationFrame(() => {
+      const bar = body.querySelector("#ts-prog-bar");
+      if (bar) bar.style.width = "15%";
+    });
+
+    function setStage(label, width, transMs) {
+      const lbl = body.querySelector("#ts-prog-label");
+      const bar = body.querySelector("#ts-prog-bar");
+      if (!lbl || !bar) return;
+      lbl.style.opacity = "0";
+      setTimeout(() => {
+        if (lbl.isConnected) { lbl.textContent = label; lbl.style.opacity = "1"; }
+      }, 200);
+      bar.style.transition = `width ${transMs}ms ease`;
+      bar.style.width = width;
+    }
+
+    _loadingTimers.push(setTimeout(() => setStage("Reading clauses\u2026", "40%", 600), 1200));
+    _loadingTimers.push(setTimeout(() => setStage("Analyzing risks\u2026", "85%", 14000), 2200));
     return;
   }
-  // Not loading: reset body to just the summary pills
+
+  // Results arrived — replace progress with summary pills
   const pills = `
     <div class="summary">
       <span class="pill">Risks: <b>${summary?.risk_count ?? 0}</b></span>
-      <span class="pill">Highest: <b>${(summary?.highest_severity ?? "—").toUpperCase()}</b></span>
+      <span class="pill">Highest: <b>${(summary?.highest_severity ?? "\u2014").toUpperCase()}</b></span>
     </div>
   `;
-  body.innerHTML = pills;  // <-- replace instead of prepend/append
+  body.innerHTML = pills;
 }
 
 
-function renderSpansList(spans) {
+function renderSpansList(spans, scanId) {
   const root = ensurePanel();
   const body = root.querySelector(".body");
   if (!spans.length) {
@@ -146,18 +220,38 @@ function renderSpansList(spans) {
   }
   const list = document.createElement("div");
   list.className = "list";
-  spans.forEach(s => {
+  spans.forEach((s, i) => {
     const sev = (s.severity || "LOW").toLowerCase();
     const item = document.createElement("div");
-    item.className = "item";
+    item.className = `item sev-${sev}`;
+    item.style.animationDelay = `${i * 50}ms`;
     item.innerHTML = `
-      <div><span class="sev ${sev}">${sev.toUpperCase()}</span>
-      <span class="reason">${escapeHTML(s.label || "Flag")}</span></div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:${s.explanation ? '5px' : '0'}">
+        <span class="sev-badge ${sev}">${sev.toUpperCase()}</span>
+        <span class="reason">${escapeHTML(s.label || "Flag")}</span>
+      </div>
       ${s.explanation ? `<div class="text">${escapeHTML(s.explanation)}</div>` : ``}
     `;
     list.appendChild(item);
   });
   body.appendChild(list);
+
+  if (scanId) {
+    const reportBtn = document.createElement("button");
+    reportBtn.className = "btn-report";
+    reportBtn.textContent = "View Full Report \u2192";
+    reportBtn.onclick = () => window.open(`https://termshift.com/history?scan=${scanId}`, "_blank");
+    body.appendChild(reportBtn);
+  }
+
+  const scanAgain = document.createElement("span");
+  scanAgain.className = "ts-scan-again";
+  scanAgain.textContent = "\u00d7 Close";
+  scanAgain.onclick = () => {
+    root.classList.remove("open");
+    setTimeout(() => root.remove(), 180);
+  };
+  body.appendChild(scanAgain);
 }
 
 
@@ -309,13 +403,30 @@ chrome.runtime.onMessage.addListener((msg) => {
     return;
   }
 
+  if (msg.type === "TERMSHIFT_SUMMARY") {
+    // Early summary arrived (~2s) — update progress label before full result lands
+    const lbl = document.getElementById("ts-prog-label");
+    if (lbl && lbl.isConnected) {
+      const count = msg.summary?.risk_count ?? '?';
+      const sev = String(msg.summary?.highest_severity || '').toUpperCase();
+      lbl.style.opacity = '0';
+      setTimeout(() => {
+        if (lbl.isConnected) {
+          lbl.textContent = `Found ${count} risk${count !== 1 ? 's' : ''} (${sev}) — loading breakdown\u2026`;
+          lbl.style.opacity = '1';
+        }
+      }, 200);
+    }
+    return;
+  }
+
   if (msg.type === "TERMSHIFT_RESULT") {
     clearPendingOutline();
 
-    const { summary, spans } = msg.payload || {};
+    const { summary, spans, scan_id } = msg.payload || {};
     setLoading(false, summary);        // adds the pills (risk count + highest)
 
-    renderSpansList(spans || []);      // render list items in the panel
+    renderSpansList(spans || [], scan_id);  // render list items in the panel
 
     // Highlight the selection:
     // If spans exist, they are offsets within the selected text → highlight precisely.
@@ -423,10 +534,12 @@ function ensureSuggestButton() {
   btn.textContent = "Use Termshift to analyze policies";
   btn.style.cssText = `
     position: fixed; right: 18px; bottom: 86px; z-index: 2147483647;
-    padding: 8px 12px; border-radius: 999px; border:1px solid #2a2a2a;
-    background:#181818; color:#fff; font: 12px/1 system-ui; cursor:pointer;
-    box-shadow: 0 12px 30px rgba(0,0,0,.25); display:none;
+    padding: 9px 16px; border-radius: 8px; border: none;
+    background: #3b82f6; color: #ffffff; font: 600 12px/1.3 'Inter', system-ui; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(59,130,246,.4); display: none; white-space: nowrap;
   `;
+  btn.addEventListener('mouseenter', () => { btn.style.background = '#2563eb'; });
+  btn.addEventListener('mouseleave', () => { btn.style.background = '#3b82f6'; });
   btn.onclick = (e) => {
     e.stopPropagation();
     if (!currentCandidates.length) return;
@@ -451,10 +564,10 @@ function ensurePolicyMenu() {
   m.id = MENU_ID;
   m.style.cssText = `
     position: fixed; right: 18px; bottom: 126px; z-index: 2147483647;
-    min-width: 260px; max-width: 360px; max-height: 50vh; overflow:auto;
-    background:#111; color:#fff; border:1px solid #2a2a2a; border-radius: 10px;
-    box-shadow: 0 18px 40px rgba(0,0,0,.35); display:none; padding:6px;
-    font: 12px/1.35 system-ui, -apple-system, Segoe UI, Roboto;
+    min-width: 260px; max-width: 360px; max-height: 50vh; overflow: auto;
+    background: #0f172a; color: #f1f5f9; border: 1px solid #334155; border-radius: 10px;
+    box-shadow: 0 18px 40px rgba(0,0,0,.45); display: none; padding: 6px;
+    font: 12px/1.35 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto;
   `;
   document.documentElement.appendChild(m);
   return m;
@@ -465,12 +578,28 @@ function renderPolicyMenu(items) {
   menu.innerHTML = ""; // reset
 
   items.forEach((it) => {
+    const isPrivacy = /privacy|cookie/i.test(it.label);
+    const typeIcon = isPrivacy
+      ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
+      : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    const chevron = `<svg class="ts-row-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:0;transition:opacity 0.12s"><polyline points="9 18 15 12 9 6"/></svg>`;
+
     const row = document.createElement("button");
     row.style.cssText = `
-      width:100%; text-align:left; display:block; margin:4px 0; padding:8px 10px;
-      background:#181818; color:#fff; border:1px solid #2a2a2a; border-radius:8px; cursor:pointer;
+      width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;
+      margin: 4px 0; padding: 8px 10px;
+      background: #263548; color: #f1f5f9; border: 1px solid #334155; border-radius: 10px;
+      cursor: pointer; font: 12px/1.35 'Inter', system-ui;
     `;
-    row.textContent = `Analyze: ${it.label}`;
+    row.innerHTML = `${typeIcon}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Analyze: ${escapeHTML(it.label)}</span>${chevron}`;
+    row.addEventListener('mouseenter', () => {
+      row.style.background = '#334155';
+      row.querySelector('.ts-row-chevron').style.opacity = '1';
+    });
+    row.addEventListener('mouseleave', () => {
+      row.style.background = '#263548';
+      row.querySelector('.ts-row-chevron').style.opacity = '0';
+    });
     row.onclick = (e) => {
       e.stopPropagation();
       togglePolicyMenu(false);
