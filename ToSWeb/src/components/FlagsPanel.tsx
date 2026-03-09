@@ -15,6 +15,7 @@ type Props = {
   onJump: (start: number, end: number, idx: number) => void;
   onReset?: () => void;
   height?: number;
+  serviceName?: string;
 };
 
 const SEVERITY_BORDER: Record<string, string> = {
@@ -71,6 +72,7 @@ export default function FlagsPanel({
   error,
   onJump,
   onReset,
+  serviceName,
 }: Props) {
   const [showPopup, setShowPopup] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -166,6 +168,15 @@ export default function FlagsPanel({
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Paste text or choose a file to analyze</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Service name heading */}
+      {hasResult && serviceName && (
+        <div className="mb-2 px-1">
+          <p className="text-base font-bold text-gray-900 dark:text-white">
+            {serviceName} Terms of Service
+          </p>
         </div>
       )}
 

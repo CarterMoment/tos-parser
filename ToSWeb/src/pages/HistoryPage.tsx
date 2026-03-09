@@ -16,6 +16,7 @@ type ScanRecord = {
   id: string
   timestamp: Date
   text_preview: string
+  service_name?: string
   summary: { risk_count: number; highest_severity: Severity | string }
   spans?: ScanSpan[]
 }
@@ -59,6 +60,7 @@ export default function HistoryPage() {
             id: doc.id,
             timestamp: d.timestamp?.toDate?.() ?? new Date(),
             text_preview: d.text_preview ?? '',
+            service_name: d.service_name ?? undefined,
             summary: d.summary ?? { risk_count: 0, highest_severity: 'LOW' },
             spans: d.spans ?? [],
           }
@@ -129,11 +131,11 @@ export default function HistoryPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-2">
-                        {scan.text_preview || 'No preview available'}
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                        {scan.service_name ?? 'Unknown Service'}
                       </p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                        {scan.timestamp.toLocaleString()}
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                        {scan.timestamp.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-2 shrink-0">

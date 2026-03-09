@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useDarkMode } from '../lib/useDarkMode'
 import { useAuth } from '../contexts/AuthContext'
+import termshiftIcon from '../assets/newtermshifticon.png'
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -79,9 +80,7 @@ function ChevronRightIcon() {
 
 function LogoMark() {
   return (
-    <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-      <span className="text-white font-black text-sm">T</span>
-    </div>
+    <img src={termshiftIcon} alt="Termshift" className="w-7 h-7 shrink-0 dark:invert" />
   )
 }
 

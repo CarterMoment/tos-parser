@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ApiResult, Span } from "./types";
 import TosViewer from "./components/TosViewer";
 import FlagsPanel, { type SpanWithDisplay } from "./components/FlagsPanel";
@@ -37,7 +37,14 @@ export default function App() {
   const [result, setResult] = useState<ApiResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeSpanIdx, setActiveSpanIdx] = useState<number | null>(null);
+  const [serviceName, setServiceName] = useState<string | null>(null);
   const { getIdToken } = useAuth();
+
+  useEffect(() => {
+    document.title = serviceName
+      ? `${serviceName} — Termshift`
+      : "Termshift - Read The Fine Print";
+  }, [serviceName]);
 
   const onChoose = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
@@ -65,6 +72,7 @@ export default function App() {
     setStreamSummary(null);
     setError(null);
     setActiveSpanIdx(null);
+    setServiceName(null);
   }
 
   async function analyze() {
@@ -93,7 +101,9 @@ export default function App() {
           console.error(`File analysis failed (${res.status} ${res.statusText}):`, await res.text());
           throw new Error("Analysis failed. Please try again.");
         }
-        setResult(await res.json());
+        const fileData = await res.json();
+        setResult(fileData);
+        setServiceName(fileData.service_name ?? null);
         return;
       }
 
@@ -131,7 +141,9 @@ export default function App() {
         throw new Error("Could not complete analysis. Please check your input and try again.");
       }
 
-      setResult(await res.json());
+      const data = await res.json();
+      setResult(data);
+      setServiceName(data.service_name ?? null);
     } catch (e: any) {
       setError(e.message ?? String(e));
     } finally {
@@ -244,6 +256,7 @@ export default function App() {
             error={error}
             onJump={(start, end, idx) => scrollToSpan(start, end, idx)}
             onReset={handleReset}
+            serviceName={serviceName ?? undefined}
           />
         </div>
 

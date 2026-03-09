@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import termshiftIcon from '../assets/newtermshifticon.png'
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
 
@@ -273,9 +274,16 @@ function Nav({ scrolled, activeSection, menuOpen, setMenuOpen, closeMenu }: NavP
           {/* Logo */}
           <Link
             to="/"
-            className={`text-xl font-bold tracking-tight transition-colors ${scrolled ? 'text-slate-900' : 'text-white'}`}
+            className="flex items-center gap-2"
           >
-            Termshift
+            <img
+              src={termshiftIcon}
+              alt="Termshift"
+              className={`w-7 h-7 transition-[filter] ${scrolled ? '' : 'invert'}`}
+            />
+            <span className={`text-xl font-bold tracking-tight transition-colors ${scrolled ? 'text-slate-900' : 'text-white'}`}>
+              Termshift
+            </span>
           </Link>
 
           {/* Center nav links — desktop */}

@@ -12,4 +12,5 @@ export type ApiResult = {
   summary: { risk_count: number; highest_severity: Severity | string };
   spans: Span[];
   model?: any;
+  service_name?: string;
 };
